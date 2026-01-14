@@ -38,61 +38,40 @@ let currentSlide = 0;
 let carImages = [];
 
 async function loadCarImages() {
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'];
-    
-    // Try all files in the cars directory with common naming patterns
-    const potentialImages = [];
-    
-    // Try numbered files 1-20
-    for (let i = 1; i <= 20; i++) {
-        for (let ext of imageExtensions) {
-            potentialImages.push(`cars/${i}.${ext}`);
+    try {
+        // Load image list from JSON file
+        const response = await fetch('cars/images.json');
+        const imageList = await response.json();
+        
+        if (imageList && imageList.length > 0) {
+            // Sort alphabetically and add cars/ prefix
+            carImages = imageList
+                .map(filename => `cars/${filename}`)
+                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            
+            initializeCarousel();
+        } else {
+            showPlaceholder();
         }
+    } catch (error) {
+        console.error('Error loading car images:', error);
+        showPlaceholder();
     }
-    
-    // Try common prefixes
-    const prefixes = ['image', 'car', 'photo', 'pic'];
-    for (let prefix of prefixes) {
-        for (let i = 1; i <= 20; i++) {
-            for (let ext of imageExtensions) {
-                potentialImages.push(`cars/${prefix}${i}.${ext}`);
-                potentialImages.push(`cars/${prefix}_${i}.${ext}`);
-            }
-        }
-    }
-    
-    // Check which images exist
-    const checkPromises = potentialImages.map(async (imagePath) => {
-        try {
-            const img = new Image();
-            return new Promise((resolve) => {
-                img.onload = () => resolve(imagePath);
-                img.onerror = () => resolve(null);
-                img.src = imagePath;
-            });
-        } catch (error) {
-            return null;
-        }
-    });
-    
-    const results = await Promise.all(checkPromises);
-    carImages = results.filter(path => path !== null);
-    
-    if (carImages.length === 0) {
-        // Show placeholder message
-        const track = document.getElementById('carousel-track');
-        track.innerHTML = '<div class="carousel-slide"><div style="color: #888; text-align: center;">Add car images to the "cars" folder<br>(name them like: 1.jpg, 2.jpg, etc.)</div></div>';
-        return;
-    }
-    
-    // Sort images naturally
-    carImages.sort((a, b) => {
-        const numA = parseInt(a.match(/\d+/)?.[0] || '0');
-        const numB = parseInt(b.match(/\d+/)?.[0] || '0');
-        return numA - numB;
-    });
-    
-    initializeCarousel();
+}
+
+function showPlaceholder() {
+    const track = document.getElementById('carousel-track');
+    track.innerHTML = `
+        <div class="carousel-slide">
+            <div style="color: #888; text-align: center; padding: 40px;">
+                <p style="margin-bottom: 10px;">No car images found.</p>
+                <p style="font-size: 14px;">Add images to the "cars" folder and list them in cars/images.json</p>
+                <p style="font-size: 12px; margin-top: 10px;">Example: ["photo1.webp", "mycar.jpg", "DSC_1234.png"]</p>
+            </div>
+        </div>
+    `;
+    // Hide navigation buttons when no images
+    document.querySelectorAll('.carousel-button').forEach(btn => btn.style.display = 'none');
 }
 
 function initializeCarousel() {
