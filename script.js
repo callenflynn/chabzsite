@@ -38,57 +38,60 @@ let currentSlide = 0;
 let carImages = [];
 
 async function loadCarImages() {
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    const commonFilenames = [];
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'];
     
-    // Try common image naming patterns
-    for (let i = 1; i <= 50; i++) {
+    // Try all files in the cars directory with common naming patterns
+    const potentialImages = [];
+    
+    // Try numbered files 1-20
+    for (let i = 1; i <= 20; i++) {
         for (let ext of imageExtensions) {
-            commonFilenames.push(`cars/${i}.${ext}`);
-            commonFilenames.push(`cars/image${i}.${ext}`);
-            commonFilenames.push(`cars/car${i}.${ext}`);
+            potentialImages.push(`cars/${i}.${ext}`);
         }
     }
     
-    // Check which images actually exist
-    for (let imagePath of commonFilenames) {
+    // Try common prefixes
+    const prefixes = ['image', 'car', 'photo', 'pic'];
+    for (let prefix of prefixes) {
+        for (let i = 1; i <= 20; i++) {
+            for (let ext of imageExtensions) {
+                potentialImages.push(`cars/${prefix}${i}.${ext}`);
+                potentialImages.push(`cars/${prefix}_${i}.${ext}`);
+            }
+        }
+    }
+    
+    // Check which images exist
+    const checkPromises = potentialImages.map(async (imagePath) => {
         try {
-            const response = await fetch(imagePath, { method: 'HEAD' });
-            if (response.ok) {
-                carImages.push(imagePath);
-            }
+            const img = new Image();
+            return new Promise((resolve) => {
+                img.onload = () => resolve(imagePath);
+                img.onerror = () => resolve(null);
+                img.src = imagePath;
+            });
         } catch (error) {
-            // Image doesn't exist, continue
+            return null;
         }
-    }
+    });
     
-    // Also try to load any image files directly if browser supports it
-    if (carImages.length === 0) {
-        // Fallback: try a few common naming conventions
-        const fallbackPaths = [
-            'cars/1.jpg', 'cars/1.png', 'cars/car1.jpg', 'cars/car1.png',
-            'cars/image1.jpg', 'cars/image1.png'
-        ];
-        
-        for (let imagePath of fallbackPaths) {
-            try {
-                const response = await fetch(imagePath, { method: 'HEAD' });
-                if (response.ok) {
-                    carImages.push(imagePath);
-                }
-            } catch (error) {
-                // Continue
-            }
-        }
-    }
+    const results = await Promise.all(checkPromises);
+    carImages = results.filter(path => path !== null);
     
     if (carImages.length === 0) {
-        document.querySelector('.cars-section').style.display = 'none';
+        // Show placeholder message
+        const track = document.getElementById('carousel-track');
+        track.innerHTML = '<div class="carousel-slide"><div style="color: #888; text-align: center;">Add car images to the "cars" folder<br>(name them like: 1.jpg, 2.jpg, etc.)</div></div>';
         return;
     }
     
-    // Sort images to ensure consistent order
-    carImages.sort();
+    // Sort images naturally
+    carImages.sort((a, b) => {
+        const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+        const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+        return numA - numB;
+    });
+    
     initializeCarousel();
 }
 
